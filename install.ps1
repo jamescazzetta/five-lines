@@ -1,9 +1,9 @@
 # Install the latest five-lines release on Windows.
-#   irm https://raw.githubusercontent.com/OWNER/REPO/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/jamescazzetta/five-lines/main/install.ps1 | iex
 # Set $env:FIVE_LINES_REPO = "owner/repo" to install from a fork.
 $ErrorActionPreference = "Stop"
 
-$repo = if ($env:FIVE_LINES_REPO) { $env:FIVE_LINES_REPO } else { "OWNER/REPO" }
+$repo = if ($env:FIVE_LINES_REPO) { $env:FIVE_LINES_REPO } else { "jamescazzetta/five-lines" }
 $dir = if ($env:FIVE_LINES_DIR) { $env:FIVE_LINES_DIR } else { Join-Path $env:LOCALAPPDATA "Programs\five-lines" }
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "aarch64" } else { "x86_64" }
 $target = "$arch-pc-windows-msvc"

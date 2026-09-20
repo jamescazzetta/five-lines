@@ -3,8 +3,10 @@ name = "five-lines"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
-description = "Review a PR diff against the ten rules of Five Lines of Code: parsed where a rule can be counted, judged by Jev where it cannot."
+description = "Use Jev to review a PR diff against the ten rules of Five Lines of Code: parsed where a rule can be counted, judged by Jev where it cannot."
 readme = "README.md"
+license = "MIT"
+repository = "https://github.com/jamescazzetta/five-lines"
 keywords = ["code-review", "refactoring", "tree-sitter", "lint"]
 categories = ["command-line-utilities", "development-tools"]
 

@@ -1,10 +1,10 @@
 #!/bin/sh
 # Install the latest five-lines release for this machine (macOS and Linux).
-#   curl -fsSL https://raw.githubusercontent.com/OWNER/REPO/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/jamescazzetta/five-lines/main/install.sh | sh
 # Set FIVE_LINES_REPO=owner/repo to install from a fork, FIVE_LINES_DIR to choose the directory.
 set -eu
 
-repo="${FIVE_LINES_REPO:-OWNER/REPO}"
+repo="${FIVE_LINES_REPO:-jamescazzetta/five-lines}"
 dir="${FIVE_LINES_DIR:-$HOME/.local/bin}"
 
 case "$(uname -s)-$(uname -m)" in

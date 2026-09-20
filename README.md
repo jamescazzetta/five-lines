@@ -1,22 +1,24 @@
 # five-lines
 
-Review a pull-request diff against the ten refactoring rules of Christian Clausen's
-*Five Lines of Code* (Manning). One binary, no runtime to install, for Windows, macOS
-and Linux.
+Use [Jev](https://typesafe.ai) to review a pull-request diff against the ten refactoring
+rules of Christian Clausen's *Five Lines of Code* (Manning). One binary, no runtime to
+install, for Windows, macOS and Linux. Ten languages are parsed exactly; any other is
+reviewed through Jev.
 
-The rules are meant to be mechanical: apply a rule, don't argue about a smell. In
-practice most of them can be **parsed and counted**, and a few need a small
-**judgment**. This tool treats the two halves differently:
+Jev is a model that returns a probability for a structured question instead of text.
+That fits code review well: each judgment becomes one atomic yes/no question ("does the
+condition of any `if` in this method have a side effect?"), the answers are combined in
+code, and the probability decides what gets raised and what is only "worth a look".
+
+The rules are meant to be mechanical: apply a rule, don't argue about a smell. So the
+tool only asks Jev what cannot be counted:
 
 | | How it is decided | Reproducible | Needs an API key |
 |---|---|---|---|
+| Rules 2, 7, 9 · confirming 4 and 10 · "is this a framework idiom?" | A typed yes/no question to Jev | No | Yes |
 | Rules 1, 3, 5, 6, 8, 10 | A real parser ([tree-sitter](https://tree-sitter.github.io)) and counting | Yes | No |
-| Rules 2, 7, 9 · confirming 4 and 10 · "is this a framework idiom?" | A typed yes/no question to [Jev](https://typesafe.ai) | No | Yes |
 
-Jev is a model that returns a probability for a structured question instead of text.
-That fits this problem: each judgment becomes one atomic question ("does the condition
-of any `if` in this method have a side effect?"), the answers are combined in code,
-and the probability decides what gets raised.
+Without an API key, or with `--no-jev`, the mechanical half still runs on its own.
 
 **It is a structural-quality lens, not a correctness review.** A method can break
 every rule here and be correct, and a 3-line method can still have a bug. Run this next
@@ -29,21 +31,18 @@ Windows (x64, ARM64), macOS (Apple silicon, Intel), Linux (x64 static, ARM64).
 
 ```sh
 # macOS and Linux
-curl -fsSL https://raw.githubusercontent.com/OWNER/REPO/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/jamescazzetta/five-lines/main/install.sh | sh
 ```
 
 ```powershell
 # Windows (PowerShell)
-irm https://raw.githubusercontent.com/OWNER/REPO/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/jamescazzetta/five-lines/main/install.ps1 | iex
 ```
 
 Or download the archive for your platform from the Releases page, unpack it, and put
 `five-lines` (`five-lines.exe` on Windows) somewhere on your `PATH`.
 
-With a Rust toolchain: `cargo install --git https://github.com/OWNER/REPO`.
-
-> Replace `OWNER/REPO` with this repository's GitHub path, here and in `install.sh` and
-> `install.ps1`.
+With a Rust toolchain: `cargo install --git https://github.com/jamescazzetta/five-lines`.
 
 ## Use
 
@@ -183,3 +182,7 @@ The ten rules are from Christian Clausen, *Five Lines of Code: How and when to
 refactor* (Manning, 2021). The review workflow and exemptions follow the
 `five-lines-review` skill in `docs/`. Jev is a product of TypeSafe AI; this project is
 not affiliated with them or with the book.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
