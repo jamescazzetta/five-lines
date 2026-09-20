@@ -85,7 +85,7 @@ grammar and, where its node names differ, a line in [`src/lang.rs`](src/lang.rs)
 
 ## What it flags, and what it leaves alone
 
-The rule text and its exemptions live in [`docs/five-lines-review.SKILL.md`](docs/five-lines-review.SKILL.md).
+The rule text and its exemptions live in the [`five-lines-review` skill](https://github.com/jamescazzetta/skills/blob/main/five-lines-review/SKILL.md).
 The tool follows them:
 
 - **Only what the diff adds.** An `if` that was already in a method the diff touched is
@@ -180,7 +180,7 @@ first commit.
 
 The ten rules are from Christian Clausen, *Five Lines of Code: How and when to
 refactor* (Manning, 2021). The review workflow and exemptions follow the
-`five-lines-review` skill in `docs/`. Jev is a product of TypeSafe AI; this project is
+[`five-lines-review` skill](https://github.com/jamescazzetta/skills/blob/main/five-lines-review/SKILL.md). Jev is a product of TypeSafe AI; this project is
 not affiliated with them or with the book.
 
 ## License
