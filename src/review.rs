@@ -10,6 +10,10 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Methods per Jev request unless --batch says otherwise. Measured with `five-lines eval --batch N`
+/// (see the README): 8 cuts requests eightfold while compliant code stays well below the reporting
+/// floor; one request for everything is faster still but eats most of that margin.
+pub const DEFAULT_BATCH: usize = 8;
 const IDIOM_THRESHOLD: f64 = 0.70;
 const LOOK_THRESHOLD: f64 = 0.55;
 
@@ -18,6 +22,8 @@ pub struct Options {
     pub base: Option<String>,
     pub use_jev: bool,
     pub threshold: f64,
+    /// Methods per Jev request.
+    pub batch: usize,
 }
 
 #[derive(Default)]
@@ -77,6 +83,14 @@ pub fn git_diff(repo: &Path, base: &str) -> Result<String> {
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
+/// A changed method after the mechanical pass, waiting for Jev's judgment.
+struct Pending {
+    unit: Unit,
+    findings: Vec<Finding>,
+    else_lines: Vec<usize>,
+    item: jev::Item,
+}
+
 pub fn review(diff_text: &str, options: &Options) -> Result<Review> {
     let mut result = Review::default();
     let key = if options.use_jev { jev::api_key() } else { None };
@@ -86,6 +100,8 @@ pub fn review(diff_text: &str, options: &Options) -> Result<Review> {
             "TYPESAFE_API_KEY is not set: the judgment rules (2, 7, 9, and the confirmation of 4 and 10) were not evaluated.".to_string(),
         );
     }
+    // Pass 1, per file: everything a parser can decide.
+    let mut pending: Vec<Pending> = Vec::new();
     let mut repo_sources: Option<BTreeMap<String, String>> = None;
     for file in diff::parse(diff_text) {
         let source = options.repo.as_ref().and_then(|repo| std::fs::read_to_string(repo.join(&file.path)).ok());
@@ -100,53 +116,73 @@ pub fn review(diff_text: &str, options: &Options) -> Result<Review> {
         let base_units = base.as_ref().map(|b| units::all_units(&file.path, b)).unwrap_or_default();
 
         for unit in units::units_for(&file, parsed.as_ref()) {
-            result.units += 1;
             let base_count = base.as_ref().and_then(|b| base_statement_count(&unit, &base_units, b));
-            let found = review_unit(&unit, parsed.as_ref(), base_count, key.as_deref(), options.threshold, &mut result)?;
-            result.findings.extend(found);
+            pending.push(mechanical_pass(unit, parsed.as_ref(), base_count));
         }
         if !rules::inheritance_in(&file.added).is_empty() || !rules::interfaces_in(&file.added).is_empty() {
             let sources = repo_sources.get_or_insert_with(|| read_repo(options.repo.as_deref()));
             result.findings.extend(structure_findings(&file, sources, options.repo.is_some()));
         }
     }
+    result.units = pending.len();
+
+    // Pass 2, across the whole diff: everything that needs judgment, in as few requests as allowed.
+    let answers = match &key {
+        Some(key) => {
+            let items: Vec<&jev::Item> = pending.iter().map(|p| &p.item).collect();
+            let (answers, requests) = jev::judge(&items, options.batch, key)?;
+            result.jev_requests = requests;
+            Some(answers)
+        }
+        None => None,
+    };
+
+    // Pass 3: turn probabilities into findings.
+    for (index, waiting) in pending.into_iter().enumerate() {
+        let judged = answers.as_ref().map(|all| &all[index]);
+        result.findings.extend(settle(waiting, judged, options.threshold));
+    }
     result.findings.sort_by(|a, b| (a.rule, &a.path, a.line).cmp(&(b.rule, &b.path, b.line)));
     Ok(result)
 }
 
-fn review_unit(
-    unit: &Unit,
-    parsed: Option<&ParsedFile>,
-    base_count: Option<usize>,
-    key: Option<&str>,
-    threshold: f64,
-    result: &mut Review,
-) -> Result<Vec<Finding>> {
+fn mechanical_pass(unit: Unit, parsed: Option<&ParsedFile>, base_count: Option<usize>) -> Pending {
     let mut findings = Vec::new();
     let mut decided: Vec<&str> = Vec::new(); // questions already answered by parsing
     let mut else_lines = Vec::new();
-    let mut affix_candidates = Vec::new();
+    let mut affixes = Vec::new();
 
-    if let Some((parsed, function)) = parsed.and_then(|p| p.node_of(unit).map(|f| (p, f))) {
-        findings.extend(rules::rule_1(unit, function, parsed, base_count));
-        findings.extend(rules::rule_3(unit, function, parsed));
-        findings.extend(rules::rule_5(unit, function, parsed));
+    if let Some((parsed, function)) = parsed.and_then(|p| p.node_of(&unit).map(|f| (p, f))) {
+        findings.extend(rules::rule_1(&unit, function, parsed, base_count));
+        findings.extend(rules::rule_3(&unit, function, parsed));
+        findings.extend(rules::rule_5(&unit, function, parsed));
         decided.extend(["r3", "r5"]);
-        else_lines = rules::rule_4_candidates(unit, function);
+        else_lines = rules::rule_4_candidates(&unit, function);
         if else_lines.is_empty() {
             decided.push("r4");
         }
-        let (affix_findings, candidates) = rules::rule_10(unit, &rules::declared_names(function, parsed));
+        let (affix_findings, candidates) = rules::rule_10(&unit, &rules::declared_names(function, parsed));
         findings.extend(affix_findings);
-        affix_candidates = candidates;
+        affixes = candidates;
     }
+    let item = jev::Item {
+        language: unit.language.clone(),
+        name: unit.name.clone(),
+        source: unit.source.clone(),
+        questions: jev::questions_for(&unit, &decided),
+        affixes,
+    };
+    Pending { unit, findings, else_lines, item }
+}
 
-    let Some(key) = key else {
+fn settle(waiting: Pending, answers: Option<&BTreeMap<String, f64>>, threshold: f64) -> Vec<Finding> {
+    let Pending { unit, mut findings, else_lines, item } = waiting;
+    let Some(answers) = answers else {
         if let Some(&line) = else_lines.first() {
             let (_, _, fix) = jev_rule("r4").expect("r4 is a Jev rule");
             let mut finding = Finding::mechanical(
                 4,
-                unit,
+                &unit,
                 line,
                 format!(
                     "if/else at line {line} in `{}` (unconfirmed: needs judgment on whether both branches are your own domain logic)",
@@ -157,46 +193,34 @@ fn review_unit(
             finding.basis = "candidate";
             findings.push(finding);
         }
-        return Ok(findings);
+        return findings;
     };
 
-    let answers = jev::judge_unit(unit, &decided, key)?;
-    result.jev_requests += usize::from(!answers.is_empty());
-    for (question, &probability) in &answers {
+    for (question, &probability) in answers {
         let Some((rule, message, fix)) = jev_rule(question).filter(|_| probability >= LOOK_THRESHOLD) else { continue };
         let line = if question == "r4" { else_lines.first().copied().unwrap_or(unit.start) } else { unit.start };
+        let (message, fix) = (message.replace("{name}", &unit.name), fix.replace("{name}", &unit.name));
+        findings.push(judged(rule, &unit, line, message, fix, probability, threshold));
+    }
+    for (n, names) in item.affixes.iter().enumerate() {
+        let Some(&probability) = answers.get(&format!("affix{n}")).filter(|p| **p >= LOOK_THRESHOLD) else { continue };
+        let listed = names.iter().map(|n| format!("`{n}`")).collect::<Vec<_>>().join(", ");
         findings.push(judged(
-            rule,
-            unit,
-            line,
-            message.replace("{name}", &unit.name),
-            fix.replace("{name}", &unit.name),
+            10,
+            &unit,
+            unit.start,
+            format!("{listed} share an affix and look like one concept"),
+            "introduce a type that holds them together, and move the logic that uses them onto it".to_string(),
             probability,
             threshold,
         ));
-    }
-    for names in affix_candidates {
-        let probability = jev::judge_affixes(&names, key)?;
-        result.jev_requests += 1;
-        if probability >= LOOK_THRESHOLD {
-            let listed = names.iter().map(|n| format!("`{n}`")).collect::<Vec<_>>().join(", ");
-            findings.push(judged(
-                10,
-                unit,
-                unit.start,
-                format!("{listed} share an affix and look like one concept"),
-                "introduce a type that holds them together, and move the logic that uses them onto it".to_string(),
-                probability,
-                threshold,
-            ));
-        }
     }
     if let Some(idiom) = answers.get("idiom").filter(|p| **p >= IDIOM_THRESHOLD) {
         for finding in &mut findings {
             finding.suppressed = Some(format!("framework or language idiom (p={idiom:.2})"));
         }
     }
-    Ok(findings)
+    findings
 }
 
 fn judged(rule: u8, unit: &Unit, line: usize, message: String, fix: String, probability: f64, threshold: f64) -> Finding {
@@ -291,7 +315,7 @@ mod tests {
     use super::*;
 
     fn offline(repo: &Path) -> Options {
-        Options { repo: Some(repo.to_path_buf()), base: None, use_jev: false, threshold: 0.8 }
+        Options { repo: Some(repo.to_path_buf()), base: None, use_jev: false, threshold: 0.8, batch: 1 }
     }
 
     #[test]

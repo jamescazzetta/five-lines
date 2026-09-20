@@ -8,7 +8,7 @@
 use crate::jev;
 use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, json};
+use serde_json::json;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -39,7 +39,7 @@ struct Row {
     correct: bool,
 }
 
-pub fn run(cases: Option<&Path>, out: Option<&Path>) -> Result<()> {
+pub fn run(cases: Option<&Path>, out: Option<&Path>, batch: usize) -> Result<()> {
     let key = jev::api_key().ok_or_else(|| anyhow!("TYPESAFE_API_KEY is not set"))?;
     let text = match cases {
         Some(path) => std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?,
@@ -47,18 +47,32 @@ pub fn run(cases: Option<&Path>, out: Option<&Path>) -> Result<()> {
     };
     let file: CaseFile = serde_json::from_str(&text).context("parsing the cases file")?;
 
+    // The same path a review takes, so a batch size measured here is the batch size you get there.
+    let items: Vec<jev::Item> = file
+        .cases
+        .iter()
+        .map(|case| jev::Item {
+            language: case.language.clone(),
+            name: case.name.clone(),
+            source: case.source.clone(),
+            questions: case.expect.keys().cloned().collect(),
+            affixes: Vec::new(),
+        })
+        .collect();
+    let started = std::time::Instant::now();
+    let (answers, requests) = jev::judge(&items.iter().collect::<Vec<_>>(), batch, &key)?;
+    let elapsed = started.elapsed();
+
     let mut rows = Vec::new();
-    for case in &file.cases {
-        let questions: Map<_, _> = case.expect.keys().map(|q| (q.clone(), jev::question(q))).collect();
-        let state = json!({"language": case.language, "name": case.name, "method": case.source});
-        let answers = jev::nouls(&jev::ask(state, &questions, &key)?)?;
+    for (case, answered) in file.cases.iter().zip(&answers) {
         for (question, &expected) in &case.expect {
-            let p = *answers.get(question).ok_or_else(|| anyhow!("no answer for {question} in {}", case.id))?;
+            let p = *answered.get(question).ok_or_else(|| anyhow!("no answer for {question} in {}", case.id))?;
             let correct = (p >= 0.5) == expected;
             println!("{} {question:<6} expected={expected:<5} p={p:.2}  {}", if correct { ' ' } else { 'x' }, case.id);
             rows.push(Row { case: case.id.clone(), language: case.language.clone(), question: question.clone(), expected, p, correct });
         }
     }
+    println!("\nbatch size {batch}: {requests} request(s) for {} snippets in {:.1}s", file.cases.len(), elapsed.as_secs_f64());
 
     println!("\n{:<7}{:>4}{:>10}{:>8}{:>14}{:>8}", "rule", "n", "accuracy", "raised", "false alarms", "missed");
     for question in rows.iter().map(|r| r.question.as_str()).collect::<BTreeSet<_>>() {
@@ -82,7 +96,7 @@ pub fn run(cases: Option<&Path>, out: Option<&Path>) -> Result<()> {
         raised.iter().filter(|r| !r.expected).count(),
     );
     if let Some(path) = out {
-        let body = serde_json::to_string_pretty(&json!({"model": jev::model(), "rows": rows}))?;
+        let body = serde_json::to_string_pretty(&json!({"model": jev::model(), "batch": batch, "requests": requests, "rows": rows}))?;
         std::fs::write(path, body + "\n")?;
         println!("wrote {}", path.display());
     }

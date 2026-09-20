@@ -45,6 +45,9 @@ enum Commands {
         threshold: f64,
         #[arg(long, value_enum, default_value_t = Format::Md)]
         format: Format,
+        /// Methods per Jev request. One request can carry several methods; larger is faster
+        #[arg(long, default_value_t = review::DEFAULT_BATCH)]
+        batch: usize,
         /// Include findings suppressed as framework or language idioms
         #[arg(long)]
         show_suppressed: bool,
@@ -59,6 +62,9 @@ enum Commands {
         /// Write the full rows as JSON
         #[arg(long)]
         out: Option<PathBuf>,
+        /// Snippets per Jev request, to measure what batching costs in accuracy
+        #[arg(long, default_value_t = review::DEFAULT_BATCH)]
+        batch: usize,
     },
     /// List the languages compiled into this binary
     Languages,
@@ -83,8 +89,8 @@ fn main() -> ExitCode {
 fn run() -> Result<ExitCode> {
     match Cli::parse().command {
         Commands::Languages => println!("Parsed exactly: {}\nAnything else is reviewed from the hunk text, by Jev only.", lang::SUPPORTED),
-        Commands::Eval { cases, out } => evaluate::run(cases.as_deref(), out.as_deref())?,
-        Commands::Review { diff, repo, base, no_jev, threshold, format, show_suppressed, fail_on_findings } => {
+        Commands::Eval { cases, out, batch } => evaluate::run(cases.as_deref(), out.as_deref(), batch)?,
+        Commands::Review { diff, repo, base, no_jev, threshold, format, batch, show_suppressed, fail_on_findings } => {
             let diff_text = match (diff.as_deref(), &repo, &base) {
                 (Some("-"), _, _) => {
                     let mut text = String::new();
@@ -95,7 +101,7 @@ fn run() -> Result<ExitCode> {
                 (None, Some(repo), Some(base)) => review::git_diff(repo, base)?,
                 _ => bail!("give a diff file, '-' for stdin, or both --repo and --base"),
             };
-            let options = review::Options { repo, base, use_jev: !no_jev, threshold };
+            let options = review::Options { repo, base, use_jev: !no_jev, threshold, batch };
             let result = review::review(&diff_text, &options)?;
             match format {
                 Format::Md => print!("{}", report::markdown(&result, show_suppressed)),

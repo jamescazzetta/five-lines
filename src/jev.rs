@@ -17,6 +17,7 @@ use std::time::Duration;
 
 const ENDPOINT: &str = "https://api.typesafe.ai/v1/systemone";
 const MAX_SOURCE_CHARS: usize = 6000;
+const MAX_BATCH_CHARS: usize = 40_000;
 
 pub fn model() -> String {
     std::env::var("FIVE_LINES_MODEL").unwrap_or_else(|_| "jev-latest".to_string())
@@ -77,6 +78,9 @@ pub fn question(key: &str) -> Value {
     }
 }
 
+/// One agent for the whole run, so requests reuse a single TLS connection.
+static AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| ureq::AgentBuilder::new().timeout(Duration::from_secs(60)).build());
+
 static PRECONDITIONS: LazyLock<BTreeMap<&'static str, Regex>> = LazyLock::new(|| {
     BTreeMap::from([
         ("r3", Regex::new(r"\bif\b").unwrap()),
@@ -92,22 +96,22 @@ static PRECONDITIONS: LazyLock<BTreeMap<&'static str, Regex>> = LazyLock::new(||
 });
 
 /// The subset worth asking: drop rules already decided mechanically and rules whose construct the diff did not add.
-pub fn questions_for(unit: &Unit, skip: &[&str]) -> Map<String, Value> {
+pub fn questions_for(unit: &Unit, skip: &[&str]) -> Vec<String> {
     let added = unit.added_text();
-    let picked: Map<String, Value> = QUESTION_KEYS
+    let picked: Vec<String> = QUESTION_KEYS
         .iter()
         .filter(|key| !skip.contains(*key) && PRECONDITIONS.get(*key).is_none_or(|re| re.is_match(&added)))
-        .map(|key| (key.to_string(), question(key)))
+        .map(|key| key.to_string())
         .collect();
     // Nothing to exempt if nothing else is being asked.
-    if picked.keys().all(|k| k == "idiom") { Map::new() } else { picked }
+    if picked.iter().all(|k| k == "idiom") { Vec::new() } else { picked }
 }
 
 pub fn ask(state: Value, questions: &Map<String, Value>, key: &str) -> Result<Value> {
     let payload = json!({"model": model(), "state": state, "questions": questions});
     for attempt in 0..6u32 {
-        let response = ureq::post(ENDPOINT)
-            .timeout(Duration::from_secs(60))
+        let response = AGENT
+            .post(ENDPOINT)
             .set("Authorization", &format!("Bearer {key}"))
             .set("User-Agent", concat!("five-lines/", env!("CARGO_PKG_VERSION")))
             .send_json(&payload);
@@ -131,17 +135,114 @@ pub fn nouls(response: &Value) -> Result<BTreeMap<String, f64>> {
     Ok(answers.iter().filter_map(|(k, a)| a["noul"].as_f64().map(|p| (k.clone(), p))).collect())
 }
 
-pub fn judge_unit(unit: &Unit, skip: &[&str], key: &str) -> Result<BTreeMap<String, f64>> {
-    let questions = questions_for(unit, skip);
-    if questions.is_empty() {
-        return Ok(BTreeMap::new());
-    }
-    let source: String = unit.source.chars().take(MAX_SOURCE_CHARS).collect();
-    nouls(&ask(json!({"language": unit.language, "name": unit.name, "method": source}), &questions, key)?)
+/// One method (or hunk) to be judged: its source, the rule questions to ask about it, and any
+/// groups of names that might be one concept (rule 10).
+pub struct Item {
+    pub language: String,
+    pub name: String,
+    pub source: String,
+    pub questions: Vec<String>,
+    pub affixes: Vec<Vec<String>>,
 }
 
-pub fn judge_affixes(names: &[String], key: &str) -> Result<f64> {
-    let questions = Map::from_iter([("affix".to_string(), question("affix"))]);
-    let answers = nouls(&ask(json!({"names": names}), &questions, key)?)?;
-    answers.get("affix").copied().ok_or_else(|| anyhow!("Jev did not answer the affix question"))
+impl Item {
+    fn is_empty(&self) -> bool {
+        self.questions.is_empty() && self.affixes.is_empty()
+    }
+}
+
+/// Answers per item, in the order given, plus the number of requests made.
+///
+/// Jev has no batch endpoint; a batch is ONE request whose state holds several methods under
+/// the keys `m1`, `m2`, ... and whose questions each point at their own method. That saves a
+/// round trip per method. Every question can still see the other methods in the state, so the
+/// batch size is a trade between latency and isolation: `five-lines eval --batch N` measures it.
+pub fn judge(items: &[&Item], batch: usize, key: &str) -> Result<(Vec<BTreeMap<String, f64>>, usize)> {
+    let mut answers: Vec<BTreeMap<String, f64>> = items.iter().map(|_| BTreeMap::new()).collect();
+    let mut requests = 0;
+    for chunk in chunks(items, batch.max(1)) {
+        let mut state = Map::new();
+        let mut questions = Map::new();
+        for (slot, &index) in chunk.iter().enumerate() {
+            let (item, m) = (items[index], format!("m{}", slot + 1));
+            let source: String = item.source.chars().take(MAX_SOURCE_CHARS).collect();
+            state.insert(m.clone(), json!({"language": item.language, "name": item.name, "method": source}));
+            for q in &item.questions {
+                questions.insert(format!("{m}_{q}"), pointed_at(question(q), "`method`", &format!("`{m}.method`")));
+            }
+            for (n, names) in item.affixes.iter().enumerate() {
+                state.insert(format!("{m}_names{n}"), json!(names));
+                questions.insert(format!("{m}_affix{n}"), pointed_at(question("affix"), "`names`", &format!("`{m}_names{n}`")));
+            }
+        }
+        requests += 1;
+        for (name, p) in nouls(&ask(Value::Object(state), &questions, key)?)? {
+            // "m3_r7" -> slot 3, question "r7"
+            let Some((m, q)) = name.split_once('_') else { continue };
+            let Some(&index) = m[1..].parse::<usize>().ok().and_then(|slot| chunk.get(slot.wrapping_sub(1))) else { continue };
+            answers[index].insert(q.to_string(), p);
+        }
+    }
+    Ok((answers, requests))
+}
+
+/// Indices of the items that have something to ask, grouped by count and by a source-size budget.
+fn chunks(items: &[&Item], batch: usize) -> Vec<Vec<usize>> {
+    let mut groups: Vec<Vec<usize>> = Vec::new();
+    let mut size = 0;
+    for (index, item) in items.iter().enumerate().filter(|(_, item)| !item.is_empty()) {
+        let chars = item.source.len().min(MAX_SOURCE_CHARS);
+        let fits = groups.last().is_some_and(|g| g.len() < batch && size + chars <= MAX_BATCH_CHARS);
+        if !fits {
+            groups.push(Vec::new());
+            size = 0;
+        }
+        groups.last_mut().expect("just pushed").push(index);
+        size += chars;
+    }
+    groups
+}
+
+fn pointed_at(mut question: Value, from: &str, to: &str) -> Value {
+    if let Some(text) = question["instructions"].as_str().map(|t| t.replace(from, to)) {
+        question["instructions"] = Value::String(text);
+    }
+    question
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(source_chars: usize, questions: &[&str]) -> Item {
+        Item {
+            language: "python".into(),
+            name: "f".into(),
+            source: "x".repeat(source_chars),
+            questions: questions.iter().map(|q| q.to_string()).collect(),
+            affixes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn items_with_nothing_to_ask_cost_no_request() {
+        let items = [item(10, &["r2"]), item(10, &[]), item(10, &["r7"])];
+        assert_eq!(chunks(&items.iter().collect::<Vec<_>>(), 8), [vec![0, 2]]);
+    }
+
+    #[test]
+    fn a_batch_is_bounded_by_count_and_by_source_size() {
+        let small: Vec<Item> = (0..5).map(|_| item(10, &["r2"])).collect();
+        assert_eq!(chunks(&small.iter().collect::<Vec<_>>(), 2), [vec![0, 1], vec![2, 3], vec![4]]);
+        let large: Vec<Item> = (0..3).map(|_| item(MAX_SOURCE_CHARS, &["r2"])).collect();
+        let grouped = chunks(&large.iter().collect::<Vec<_>>(), 100);
+        assert!(grouped.iter().all(|g| g.len() * MAX_SOURCE_CHARS <= MAX_BATCH_CHARS), "{grouped:?}");
+    }
+
+    #[test]
+    fn a_batched_question_points_at_its_own_method() {
+        let q = pointed_at(question("r7"), "`method`", "`m3.method`");
+        let text = q["instructions"].as_str().unwrap();
+        assert!(text.contains("`m3.method`") && !text.contains("`method`"));
+    }
 }

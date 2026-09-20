@@ -116,8 +116,10 @@ The tool follows them:
 | 9 | Avoid getters/setters | Jev |
 | 10 | No common affixes | Parsed parameter names. Known antonym pairs (`start`/`end`, `min`/`max`, `from`/`to`, ...) are flagged mechanically; any other shared affix is a candidate that Jev confirms |
 
-One Jev request is made per changed method, carrying only the questions whose structural
-precondition is present in the added lines.
+Only questions whose structural precondition is present in the added lines are asked. Up
+to eight changed methods travel in one Jev request (`--batch N` changes that): Jev has no
+batch endpoint, so a batch is one request whose state holds the methods as `m1`, `m2`, ...
+and whose questions each point at their own method.
 
 ## How much to trust the Jev half
 
@@ -137,7 +139,27 @@ TypeScript, JavaScript, Java, Go, PHP, Rust and C ([rows of the second run](eval
 | False alarms among raised | **0** | **0** |
 | Not raised | a domain if/else scored as "worth a look"; a PHP promoted constructor not recognised as an idiom (0.46) | the same two cases, both between 0.5 and 0.8 |
 
-The two runs differ because Jev is not deterministic, which is the first of the limits:
+### What batching costs
+
+Every question in a batch can see the other methods in the request, so batching trades
+isolation for speed. `five-lines eval --batch N` measures it on the same 34 judgments:
+
+| Methods per request | Requests | Time | Correct | False alarms | Highest score on compliant code |
+|---|---|---|---|---|---|
+| 1 | 23 | 7.6 s | 34 of 34 | 0 | 0.22 |
+| 4 | 6 | 4.6 s* | 34 of 34 | 0 | 0.26 |
+| **8 (default)** | 3 | 1.3 s | 34 of 34 | 0 | 0.38 |
+| 23 (everything) | 1 | 1.0 s | 34 of 34 | 0 | 0.45 |
+
+\* measured before requests shared one connection; the others after.
+
+Accuracy held at every size. What moved is the margin: a finding is reported from 0.55, and
+compliant code drifted from 0.22 toward it as the batch grew. Most probabilities shifted by
+about 0.03; the fuzziest question ("is this a framework idiom?") shifted by up to 0.24.
+Eight per request keeps most of the speed and most of the margin. One run per size on a
+small seed set, so treat it as a direction, not a guarantee.
+
+The two earlier runs differ because Jev is not deterministic, which is the first of the limits:
 
 - **Jev is not deterministic.** In a separate test, identical requests moved confidence
   by up to 0.13 and flipped answers that were near 0.5. A finding close to the threshold
@@ -160,9 +182,9 @@ The two runs differ because Jev is not deterministic, which is the first of the 
 ## Development
 
 ```sh
-cargo test                      # 26 tests, no network
+cargo test                      # 29 tests, no network
 cargo clippy --all-targets -- -D warnings && cargo fmt --check
-cargo run -- eval --out eval/results-$(date +%F).json
+cargo run -- eval --out eval/results-$(date +%F).json   # add --batch N to compare sizes
 ```
 
 Layout: `src/diff.rs` (parse the diff), `lang.rs` (grammars and node kinds), `units.rs`
