@@ -21,7 +21,7 @@ jobs:
           - { os: windows-latest,   target: aarch64-pc-windows-msvc,    archive: zip }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: rustup toolchain install stable --profile minimal --target ${{ matrix.target }}
       - name: musl toolchain (static Linux binary, runs on any distribution)
         if: endsWith(matrix.target, 'musl')
@@ -41,7 +41,7 @@ jobs:
           New-Item -ItemType Directory $name | Out-Null
           Copy-Item target/${{ matrix.target }}/release/five-lines.exe, README.md $name
           Compress-Archive -Path $name -DestinationPath "$name.zip"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target }}
           path: five-lines-*.${{ matrix.archive }}
@@ -50,7 +50,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
