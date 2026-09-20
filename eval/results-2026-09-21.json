@@ -1,277 +1,277 @@
 {
- "model": "jev-latest",
- "rows": [
-  {
-   "case": "ts-dto-getter",
-   "language": "typescript",
-   "question": "r9",
-   "expected": false,
-   "p": 0.21,
-   "correct": true
-  },
-  {
-   "case": "ts-dto-getter",
-   "language": "typescript",
-   "question": "idiom",
-   "expected": false,
-   "p": 0.19,
-   "correct": true
-  },
-  {
-   "case": "java-account-getter-branching",
-   "language": "java",
-   "question": "r9",
-   "expected": true,
-   "p": 0.96,
-   "correct": true
-  },
-  {
-   "case": "py-property-dataclass",
-   "language": "python",
-   "question": "r9",
-   "expected": false,
-   "p": 0.11,
-   "correct": true
-  },
-  {
-   "case": "py-orchestrate-and-compute",
-   "language": "python",
-   "question": "r2",
-   "expected": true,
-   "p": 0.98,
-   "correct": true
-  },
-  {
-   "case": "py-orchestrate-and-compute",
-   "language": "python",
-   "question": "idiom",
-   "expected": false,
-   "p": 0.11,
-   "correct": true
-  },
-  {
-   "case": "py-orchestrate-only",
-   "language": "python",
-   "question": "r2",
-   "expected": false,
-   "p": 0.08,
-   "correct": true
-  },
-  {
-   "case": "go-compute-only",
-   "language": "go",
-   "question": "r2",
-   "expected": false,
-   "p": 0.02,
-   "correct": true
-  },
-  {
-   "case": "go-compute-only",
-   "language": "go",
-   "question": "r7",
-   "expected": false,
-   "p": 0.09,
-   "correct": true
-  },
-  {
-   "case": "ts-ifelse-domain",
-   "language": "typescript",
-   "question": "r4",
-   "expected": true,
-   "p": 0.73,
-   "correct": true
-  },
-  {
-   "case": "ts-ifelse-domain",
-   "language": "typescript",
-   "question": "r3",
-   "expected": false,
-   "p": 0.07,
-   "correct": true
-  },
-  {
-   "case": "ts-ifelse-foreign-type",
-   "language": "typescript",
-   "question": "r4",
-   "expected": false,
-   "p": 0.09,
-   "correct": true
-  },
-  {
-   "case": "php-guard-clause",
-   "language": "php",
-   "question": "r4",
-   "expected": false,
-   "p": 0.03,
-   "correct": true
-  },
-  {
-   "case": "php-guard-clause",
-   "language": "php",
-   "question": "r7",
-   "expected": false,
-   "p": 0.09,
-   "correct": true
-  },
-  {
-   "case": "java-if-in-middle",
-   "language": "java",
-   "question": "r3",
-   "expected": true,
-   "p": 0.99,
-   "correct": true
-  },
-  {
-   "case": "java-if-in-middle",
-   "language": "java",
-   "question": "r4",
-   "expected": false,
-   "p": 0.05,
-   "correct": true
-  },
-  {
-   "case": "java-if-first-and-only",
-   "language": "java",
-   "question": "r3",
-   "expected": false,
-   "p": 0.09,
-   "correct": true
-  },
-  {
-   "case": "java-if-first-and-only",
-   "language": "java",
-   "question": "r4",
-   "expected": false,
-   "p": 0.03,
-   "correct": true
-  },
-  {
-   "case": "java-if-first-and-only",
-   "language": "java",
-   "question": "r7",
-   "expected": false,
-   "p": 0.24,
-   "correct": true
-  },
-  {
-   "case": "ts-switch-default",
-   "language": "typescript",
-   "question": "r5",
-   "expected": true,
-   "p": 0.99,
-   "correct": true
-  },
-  {
-   "case": "ts-switch-exhaustive",
-   "language": "typescript",
-   "question": "r5",
-   "expected": false,
-   "p": 0.07,
-   "correct": true
-  },
-  {
-   "case": "rust-match-exhaustive",
-   "language": "rust",
-   "question": "r5",
-   "expected": false,
-   "p": 0.05,
-   "correct": true
-  },
-  {
-   "case": "java-switch-fallthrough",
-   "language": "java",
-   "question": "r5",
-   "expected": true,
-   "p": 0.95,
-   "correct": true
-  },
-  {
-   "case": "c-assignment-in-condition",
-   "language": "c",
-   "question": "r7",
-   "expected": true,
-   "p": 0.97,
-   "correct": true
-  },
-  {
-   "case": "js-condition-mutates",
-   "language": "javascript",
-   "question": "r7",
-   "expected": true,
-   "p": 0.97,
-   "correct": true
-  },
-  {
-   "case": "py-condition-logs",
-   "language": "python",
-   "question": "r7",
-   "expected": true,
-   "p": 0.97,
-   "correct": true
-  },
-  {
-   "case": "py-pure-condition",
-   "language": "python",
-   "question": "r7",
-   "expected": false,
-   "p": 0.09,
-   "correct": true
-  },
-  {
-   "case": "py-test-setup",
-   "language": "python",
-   "question": "idiom",
-   "expected": true,
-   "p": 0.97,
-   "correct": true
-  },
-  {
-   "case": "java-spring-controller",
-   "language": "java",
-   "question": "idiom",
-   "expected": true,
-   "p": 0.95,
-   "correct": true
-  },
-  {
-   "case": "java-spring-controller",
-   "language": "java",
-   "question": "r2",
-   "expected": false,
-   "p": 0.05,
-   "correct": true
-  },
-  {
-   "case": "ts-domain-method",
-   "language": "typescript",
-   "question": "idiom",
-   "expected": false,
-   "p": 0.08,
-   "correct": true
-  },
-  {
-   "case": "ts-domain-method",
-   "language": "typescript",
-   "question": "r9",
-   "expected": false,
-   "p": 0.06,
-   "correct": true
-  },
-  {
-   "case": "php-promoted-constructor",
-   "language": "php",
-   "question": "idiom",
-   "expected": true,
-   "p": 0.46,
-   "correct": false
-  },
-  {
-   "case": "php-promoted-constructor",
-   "language": "php",
-   "question": "r9",
-   "expected": false,
-   "p": 0.04,
-   "correct": true
-  }
- ]
+  "model": "jev-latest",
+  "rows": [
+    {
+      "case": "ts-dto-getter",
+      "correct": true,
+      "expected": false,
+      "language": "typescript",
+      "p": 0.18,
+      "question": "idiom"
+    },
+    {
+      "case": "ts-dto-getter",
+      "correct": true,
+      "expected": false,
+      "language": "typescript",
+      "p": 0.19,
+      "question": "r9"
+    },
+    {
+      "case": "java-account-getter-branching",
+      "correct": true,
+      "expected": true,
+      "language": "java",
+      "p": 0.96,
+      "question": "r9"
+    },
+    {
+      "case": "py-property-dataclass",
+      "correct": true,
+      "expected": false,
+      "language": "python",
+      "p": 0.1,
+      "question": "r9"
+    },
+    {
+      "case": "py-orchestrate-and-compute",
+      "correct": true,
+      "expected": false,
+      "language": "python",
+      "p": 0.13,
+      "question": "idiom"
+    },
+    {
+      "case": "py-orchestrate-and-compute",
+      "correct": true,
+      "expected": true,
+      "language": "python",
+      "p": 0.98,
+      "question": "r2"
+    },
+    {
+      "case": "py-orchestrate-only",
+      "correct": true,
+      "expected": false,
+      "language": "python",
+      "p": 0.07,
+      "question": "r2"
+    },
+    {
+      "case": "go-compute-only",
+      "correct": true,
+      "expected": false,
+      "language": "go",
+      "p": 0.03,
+      "question": "r2"
+    },
+    {
+      "case": "go-compute-only",
+      "correct": true,
+      "expected": false,
+      "language": "go",
+      "p": 0.08,
+      "question": "r7"
+    },
+    {
+      "case": "ts-ifelse-domain",
+      "correct": true,
+      "expected": false,
+      "language": "typescript",
+      "p": 0.08,
+      "question": "r3"
+    },
+    {
+      "case": "ts-ifelse-domain",
+      "correct": true,
+      "expected": true,
+      "language": "typescript",
+      "p": 0.76,
+      "question": "r4"
+    },
+    {
+      "case": "ts-ifelse-foreign-type",
+      "correct": true,
+      "expected": false,
+      "language": "typescript",
+      "p": 0.09,
+      "question": "r4"
+    },
+    {
+      "case": "php-guard-clause",
+      "correct": true,
+      "expected": false,
+      "language": "php",
+      "p": 0.03,
+      "question": "r4"
+    },
+    {
+      "case": "php-guard-clause",
+      "correct": true,
+      "expected": false,
+      "language": "php",
+      "p": 0.1,
+      "question": "r7"
+    },
+    {
+      "case": "java-if-in-middle",
+      "correct": true,
+      "expected": true,
+      "language": "java",
+      "p": 0.99,
+      "question": "r3"
+    },
+    {
+      "case": "java-if-in-middle",
+      "correct": true,
+      "expected": false,
+      "language": "java",
+      "p": 0.05,
+      "question": "r4"
+    },
+    {
+      "case": "java-if-first-and-only",
+      "correct": true,
+      "expected": false,
+      "language": "java",
+      "p": 0.07,
+      "question": "r3"
+    },
+    {
+      "case": "java-if-first-and-only",
+      "correct": true,
+      "expected": false,
+      "language": "java",
+      "p": 0.03,
+      "question": "r4"
+    },
+    {
+      "case": "java-if-first-and-only",
+      "correct": true,
+      "expected": false,
+      "language": "java",
+      "p": 0.24,
+      "question": "r7"
+    },
+    {
+      "case": "ts-switch-default",
+      "correct": true,
+      "expected": true,
+      "language": "typescript",
+      "p": 0.98,
+      "question": "r5"
+    },
+    {
+      "case": "ts-switch-exhaustive",
+      "correct": true,
+      "expected": false,
+      "language": "typescript",
+      "p": 0.07,
+      "question": "r5"
+    },
+    {
+      "case": "rust-match-exhaustive",
+      "correct": true,
+      "expected": false,
+      "language": "rust",
+      "p": 0.04,
+      "question": "r5"
+    },
+    {
+      "case": "java-switch-fallthrough",
+      "correct": true,
+      "expected": true,
+      "language": "java",
+      "p": 0.96,
+      "question": "r5"
+    },
+    {
+      "case": "c-assignment-in-condition",
+      "correct": true,
+      "expected": true,
+      "language": "c",
+      "p": 0.97,
+      "question": "r7"
+    },
+    {
+      "case": "js-condition-mutates",
+      "correct": true,
+      "expected": true,
+      "language": "javascript",
+      "p": 0.97,
+      "question": "r7"
+    },
+    {
+      "case": "py-condition-logs",
+      "correct": true,
+      "expected": true,
+      "language": "python",
+      "p": 0.97,
+      "question": "r7"
+    },
+    {
+      "case": "py-pure-condition",
+      "correct": true,
+      "expected": false,
+      "language": "python",
+      "p": 0.09,
+      "question": "r7"
+    },
+    {
+      "case": "py-test-setup",
+      "correct": true,
+      "expected": true,
+      "language": "python",
+      "p": 0.97,
+      "question": "idiom"
+    },
+    {
+      "case": "java-spring-controller",
+      "correct": true,
+      "expected": true,
+      "language": "java",
+      "p": 0.94,
+      "question": "idiom"
+    },
+    {
+      "case": "java-spring-controller",
+      "correct": true,
+      "expected": false,
+      "language": "java",
+      "p": 0.05,
+      "question": "r2"
+    },
+    {
+      "case": "ts-domain-method",
+      "correct": true,
+      "expected": false,
+      "language": "typescript",
+      "p": 0.09,
+      "question": "idiom"
+    },
+    {
+      "case": "ts-domain-method",
+      "correct": true,
+      "expected": false,
+      "language": "typescript",
+      "p": 0.09,
+      "question": "r9"
+    },
+    {
+      "case": "php-promoted-constructor",
+      "correct": true,
+      "expected": true,
+      "language": "php",
+      "p": 0.58,
+      "question": "idiom"
+    },
+    {
+      "case": "php-promoted-constructor",
+      "correct": true,
+      "expected": false,
+      "language": "php",
+      "p": 0.04,
+      "question": "r9"
+    }
+  ]
 }

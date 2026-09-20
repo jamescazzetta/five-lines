@@ -1,0 +1,37 @@
+[package]
+name = "five-lines"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Review a PR diff against the ten rules of Five Lines of Code: parsed where a rule can be counted, judged by Jev where it cannot."
+readme = "README.md"
+keywords = ["code-review", "refactoring", "tree-sitter", "lint"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+ignore = "0.4.33"
+regex = "1.13.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tree-sitter = "0.27.0"
+tree-sitter-c = "0.24.2"
+tree-sitter-c-sharp = "0.23.5"
+tree-sitter-cpp = "0.23.4"
+tree-sitter-go = "0.25.0"
+tree-sitter-java = "0.23.5"
+tree-sitter-javascript = "0.25.0"
+tree-sitter-php = "0.24.2"
+tree-sitter-python = "0.25.0"
+tree-sitter-rust = "0.24.2"
+tree-sitter-typescript = "0.23.2"
+ureq = { version = "2", features = ["json"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

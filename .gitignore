@@ -1,5 +1,2 @@
-__pycache__/
-*.pyc
-.venv/
-*.egg-info/
+/target
 .DS_Store

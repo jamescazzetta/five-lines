@@ -6,14 +6,14 @@ _A structural-quality lens (Christian Clausen, *Five Lines of Code*). It is not 
 
 ### Rule 1 · Five lines
 - `orders/pricing.py:39` — `quote` has 10 statements (well over; budget 5) _(mechanical; introduced)_
-  - Fix: extract the `for` block at line 42 into its own method
+  - Fix: extract the `if` block at line 44 into its own method
 
 ### Rule 2 · Call or pass, not both
 - `orders/pricing.py:39` — `quote` both orchestrates collaborators and computes on raw values _(Jev 0.98; introduced)_
   - Fix: keep the calls in `quote`; move the inline computation into a method that is handed the values
 - `web/cart.ts:14` — `shippingCost` both orchestrates collaborators and computes on raw values _(Jev 0.95; introduced)_
   - Fix: keep the calls in `shippingCost`; move the inline computation into a method that is handed the values
-- `web/cart.ts:22` — `drain` both orchestrates collaborators and computes on raw values _(Jev 0.70; worth a look)_
+- `web/cart.ts:22` — `drain` both orchestrates collaborators and computes on raw values _(Jev 0.71; worth a look)_
   - Fix: keep the calls in `drain`; move the inline computation into a method that is handed the values
 
 ### Rule 3 · If only at the start
@@ -21,11 +21,11 @@ _A structural-quality lens (Christian Clausen, *Five Lines of Code*). It is not 
   - Fix: extract the `if` at line 44 and its block into its own method, so it starts that method
 
 ### Rule 4 · Never if-else
-- `web/cart.ts:17` — `shippingCost` branches with if/else between two pieces of its own domain logic _(Jev 0.57; worth a look)_
+- `web/cart.ts:15` — `shippingCost` branches with if/else between two pieces of its own domain logic _(Jev 0.60; worth a look)_
   - Fix: introduce one interface with a class per branch, and push each branch's body into its class
 
 ### Rule 5 · Never switch
-- `orders/pricing.py:53` — the `match` at line 53 has a catch-all `case _` _(mechanical; introduced)_
+- `orders/pricing.py:53` — the `match` at line 53 has a catch-all arm _(mechanical; introduced)_
   - Fix: list every case explicitly so a new variant fails loudly, or replace with polymorphism
 
 ### Rule 6 · Inherit only from interfaces

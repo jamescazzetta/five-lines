@@ -1,16 +1,17 @@
-# five-lines-jev
+# five-lines
 
 Review a pull-request diff against the ten refactoring rules of Christian Clausen's
-*Five Lines of Code* (Manning).
+*Five Lines of Code* (Manning). One binary, no runtime to install, for Windows, macOS
+and Linux.
 
 The rules are meant to be mechanical: apply a rule, don't argue about a smell. In
-practice about half of them can be **counted** and the other half need a small
+practice most of them can be **parsed and counted**, and a few need a small
 **judgment**. This tool treats the two halves differently:
 
 | | How it is decided | Reproducible | Needs an API key |
 |---|---|---|---|
-| Rules 1, 6, 8, 10 · rules 3 and 5 in Python | Parsing and counting | Yes | No |
-| Rules 2, 4, 7, 9 · rules 3 and 5 in other languages · "is this a framework idiom?" | A typed yes/no question to [Jev](https://typesafe.ai) | No | Yes |
+| Rules 1, 3, 5, 6, 8, 10 | A real parser ([tree-sitter](https://tree-sitter.github.io)) and counting | Yes | No |
+| Rules 2, 7, 9 · confirming 4 and 10 · "is this a framework idiom?" | A typed yes/no question to [Jev](https://typesafe.ai) | No | Yes |
 
 Jev is a model that returns a probability for a structured question instead of text.
 That fits this problem: each judgment becomes one atomic question ("does the condition
@@ -21,19 +22,37 @@ and the probability decides what gets raised.
 every rule here and be correct, and a 3-line method can still have a bug. Run this next
 to a real review, never instead of one.
 
-## Quick start
+## Install
 
-No dependencies beyond Python 3.10+.
+Prebuilt binaries are attached to each [GitHub Release](../../releases):
+Windows (x64, ARM64), macOS (Apple silicon, Intel), Linux (x64 static, ARM64).
 
 ```sh
-git clone <this repo> && cd five-lines-jev
-python3 -m pip install -e .          # or: PYTHONPATH=src python3 -m five_lines.cli ...
+# macOS and Linux
+curl -fsSL https://raw.githubusercontent.com/OWNER/REPO/main/install.sh | sh
+```
 
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/OWNER/REPO/main/install.ps1 | iex
+```
+
+Or download the archive for your platform from the Releases page, unpack it, and put
+`five-lines` (`five-lines.exe` on Windows) somewhere on your `PATH`.
+
+With a Rust toolchain: `cargo install --git https://github.com/OWNER/REPO`.
+
+> Replace `OWNER/REPO` with this repository's GitHub path, here and in `install.sh` and
+> `install.ps1`.
+
+## Use
+
+```sh
 # the bundled example, mechanical rules only (no network)
 five-lines review examples/change.diff --repo examples/repo --no-jev
 
 # with Jev judging the rest
-export TYPESAFE_API_KEY=...          # never commit this
+export TYPESAFE_API_KEY=...          # PowerShell: $env:TYPESAFE_API_KEY = "..."
 five-lines review examples/change.diff --repo examples/repo
 ```
 
@@ -46,13 +65,24 @@ gh pr diff 123 | five-lines review - --repo . --base origin/main
 five-lines review --repo . --base origin/main
 ```
 
-- `--repo` lets the tool read whole methods, not only the hunk, and look up base classes
-  and interface implementers. Without it, the hunk text is reviewed on its own.
-- `--base` tells "introduced" from "grown" and skips a long method the diff did not make longer.
+- `--repo` lets the tool parse whole files, find the method around each changed line,
+  and look up base classes and interface implementers. Without it, only the hunk text
+  is available and only Jev can review it.
+- `--base` tells "introduced" from "grown" and skips a long method the diff did not make
+  longer. It needs `git` on the `PATH`.
 - `--format json` for tooling, `--fail-on-findings` for CI, `--threshold` to change when
   a Jev judgment is raised (default 0.80; 0.55 up to the threshold is "worth a look").
+- `five-lines languages` lists the parsers compiled into the binary.
 
 Expected output for the bundled example is in [`examples/expected-review.md`](examples/expected-review.md).
+
+## Languages
+
+Parsed exactly: **Python, JavaScript, TypeScript (and TSX), Java, Go, PHP, Rust, C, C++, C#**.
+
+A file in any other language (Kotlin, Swift, Ruby, ...) is reviewed from its hunk text
+by Jev alone, and the report says so. Adding a language means adding its tree-sitter
+grammar and, where its node names differ, a line in [`src/lang.rs`](src/lang.rs).
 
 ## What it flags, and what it leaves alone
 
@@ -76,71 +106,76 @@ The tool follows them:
 
 | # | Rule | Check |
 |---|---|---|
-| 1 | Five lines | Statement count, not line count. Python via `ast`; brace languages by counting body lines, with a wrapped call counted once. Compared against the base version when `--base` is given. |
+| 1 | Five lines | Statement nodes in the method body, not lines: a call wrapped over six lines is one statement, a Rust tail expression counts, a `for` header does not. Compared against the base version when `--base` is given. |
 | 2 | Call or pass, not both | Jev |
-| 3 | If only at the start | Python: exact via `ast`. Other languages: Jev |
-| 4 | Never if-else | Structure finds the `else` the diff added; Jev decides whether both branches are your own domain logic or a branch on a foreign type |
-| 5 | Never switch | Python `match`: exact (catch-all arm, or an arm that does not return). Other languages: Jev |
+| 3 | If only at the start | Parsed: an `if` the diff added that is not the method's first and only statement. `else if` is not counted twice. |
+| 4 | Never if-else | Parsed to find the if/else the diff added; Jev decides whether both branches are your own domain logic or a branch on a foreign type |
+| 5 | Never switch | Parsed: a catch-all arm (`default`, `case _`, `_ =>`), or an arm that breaks or falls through instead of returning. Value arms (`=>`, `->`) return by construction. Grouped labels are not flagged. |
 | 6 | Inherit only from interfaces | Finds added `extends` / Python bases, then looks the base up in the repo: bodiless contract or implementation? |
 | 7 | Pure conditions | Jev |
 | 8 | No single-implementation interfaces | Finds added interfaces, protocols and traits, then counts implementers in the repo, excluding test paths |
 | 9 | Avoid getters/setters | Jev |
-| 10 | No common affixes | Known antonym pairs (`start`/`end`, `min`/`max`, `from`/`to`, ...) are flagged mechanically; any other shared affix is a candidate that Jev confirms |
+| 10 | No common affixes | Parsed parameter names. Known antonym pairs (`start`/`end`, `min`/`max`, `from`/`to`, ...) are flagged mechanically; any other shared affix is a candidate that Jev confirms |
 
 One Jev request is made per changed method, carrying only the questions whose structural
-precondition is present in the added lines. A method with no `else` is never asked about
-if-else.
+precondition is present in the added lines.
 
 ## How much to trust the Jev half
 
-Measured, not assumed. `five-lines eval` scores Jev against the labelled snippets in
-[`eval/cases.json`](eval/cases.json). In a code review the costly error is the **false
-alarm**: a reviewer who is told twice that a plain DTO "smuggles behaviour through
-accessors" stops reading the tool. So the number to watch is how many *raised* findings
-are wrong.
+Measured, not assumed. `five-lines eval` scores Jev against the labelled snippets bundled
+in the binary ([`eval/cases.json`](eval/cases.json)). In a code review the costly error
+is the **false alarm**: a reviewer who is told twice that a plain DTO "smuggles behaviour
+through accessors" stops reading the tool. So the number to watch is how many *raised*
+findings are wrong.
 
-First run, 2026-09-21, `jev-1.13.0` ([rows](eval/results-2026-09-21.json)):
+Two runs on 2026-09-21 against `jev-1.13.0`, 34 judgments across 23 snippets in Python,
+TypeScript, JavaScript, Java, Go, PHP, Rust and C ([rows of the second run](eval/results-2026-09-21.json)):
 
-| | |
-|---|---|
-| Judgments | 34 across 23 snippets in Python, TypeScript, JavaScript, Java, Go, PHP, Rust and C |
-| Correct at 0.5 | 33 (97%) |
-| Raised at ≥ 0.80 | 10 of the 12 true cases, with **0 false alarms**; no compliant snippet scored above 0.24 |
-| True case scored as "worth a look" | an if/else between two pieces of domain logic, at 0.73 |
-| The one miss | a PHP promoted constructor was not recognised as a language idiom (0.46) |
+| | Run 1 | Run 2 |
+|---|---|---|
+| Correct at 0.5 | 33 of 34 | 34 of 34 |
+| Raised at ≥ 0.80 | 10 of the 12 true cases | 10 of the 12 true cases |
+| False alarms among raised | **0** | **0** |
+| Not raised | a domain if/else scored as "worth a look"; a PHP promoted constructor not recognised as an idiom (0.46) | the same two cases, both between 0.5 and 0.8 |
 
-Read that with its limits:
+The two runs differ because Jev is not deterministic, which is the first of the limits:
 
+- **Jev is not deterministic.** In a separate test, identical requests moved confidence
+  by up to 0.13 and flipped answers that were near 0.5. A finding close to the threshold
+  can appear in one run and not the next. The mechanical findings never do.
 - **The labels were written by the author of this tool, while building it.** It is a
   seed set, not an independent benchmark, and 34 judgments is a small number.
-- **Jev is not deterministic.** In a separate test, identical requests moved confidence
-  by up to 0.13 and flipped answers that were near 0.5. Findings close to the threshold
-  can appear in one run and not the next. The mechanical findings never do.
 - No comparison against a general LLM was run on these cases.
 - Method source from your diff is sent to typesafe.ai when Jev is enabled. Use
   `--no-jev` for code you may not send to a third party.
 
 ## Limits of the mechanical half
 
-- Python is parsed exactly. Brace languages (TypeScript, JavaScript, Java, Kotlin, C#,
-  Go, PHP, Rust, Swift, C, C++, Scala, Dart) use a header pattern and brace matching.
-  That finds the method around a changed line well; it is not a parser, and unusual
-  formatting can defeat it.
 - Rule 6 and rule 8 search the repo by name. Two types with the same name in different
-  packages will confuse them.
+  packages will confuse them. The inheritance line itself is found by pattern, not by parsing.
+- Statement counting is generic across grammars. It is tested in all ten languages, but
+  an unusual construct can be over- or under-counted by one.
 - Rule 3 is strict because the book is strict. On real code it is usually the most
   frequent finding.
 
 ## Development
 
 ```sh
-python3 -m unittest discover -s tests     # 21 tests, no network
-five-lines eval --out eval/results-$(date +%F).json
+cargo test                      # 26 tests, no network
+cargo clippy --all-targets -- -D warnings && cargo fmt --check
+cargo run -- eval --out eval/results-$(date +%F).json
 ```
 
-Layout: `src/five_lines/` has `diff.py` (parse the diff), `units.py` (find changed
-methods), `rules.py` (mechanical rules), `jev.py` (questions and client), `review.py`
-(orchestration), `report.py` and `evaluate.py`.
+Layout: `src/diff.rs` (parse the diff), `lang.rs` (grammars and node kinds), `units.rs`
+(find changed methods), `rules.rs` (mechanical rules), `jev.rs` (questions and client),
+`review.rs` (orchestration), `report.rs`, `evaluate.rs`.
+
+Releases: push a tag such as `v0.1.0`. [`release.yml`](.github/workflows/release.yml)
+builds all six targets on GitHub's runners and publishes them with checksums.
+[`ci.yml`](.github/workflows/ci.yml) runs the tests on Linux, macOS and Windows.
+
+The first version of this tool was a Python script; it is in the git history at the
+first commit.
 
 ## Credits
 
