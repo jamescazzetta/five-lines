@@ -1,0 +1,223 @@
+{
+ "note": "Labels were written by the author of this tool while building it. They are a seed set, not an independent benchmark.",
+ "cases": [
+  {
+   "id": "ts-dto-getter",
+   "language": "typescript",
+   "name": "getEmail",
+   "source": "export class UserDto {\n  constructor(private readonly email: string) {}\n  getEmail(): string {\n    return this.email;\n  }\n}",
+   "expect": {
+    "r9": false,
+    "idiom": false
+   }
+  },
+  {
+   "id": "java-account-getter-branching",
+   "language": "java",
+   "name": "getBalance",
+   "source": "// Account has withdraw(), deposit(), freeze(); callers do: if (account.getBalance() < amount) { ... }\npublic class Account {\n    private long balance;\n    public long getBalance() {\n        return this.balance;\n    }\n}",
+   "expect": {
+    "r9": true
+   }
+  },
+  {
+   "id": "py-property-dataclass",
+   "language": "python",
+   "name": "total",
+   "source": "@dataclass(frozen=True)\nclass LineItem:\n    quantity: int\n    unit_price: Decimal\n\n    @property\n    def total(self) -> Decimal:\n        return self.quantity * self.unit_price",
+   "expect": {
+    "r9": false
+   }
+  },
+  {
+   "id": "py-orchestrate-and-compute",
+   "language": "python",
+   "name": "checkout",
+   "source": "def checkout(self, cart, customer):\n    self.inventory.reserve(cart.items)\n    subtotal = 0\n    for item in cart.items:\n        subtotal += item.price * item.quantity * (1 - item.discount / 100)\n    label = customer.first_name + \" \" + customer.last_name.upper() + \" #\" + str(cart.id)\n    self.mailer.send_receipt(customer.email, label, subtotal)\n    self.audit.record(\"checkout\", cart.id)",
+   "expect": {
+    "r2": true,
+    "idiom": false
+   }
+  },
+  {
+   "id": "py-orchestrate-only",
+   "language": "python",
+   "name": "checkout",
+   "source": "def checkout(self, cart, customer):\n    self.inventory.reserve(cart.items)\n    total = self.pricing.total_for(cart)\n    self.mailer.send_receipt(customer.email, total)\n    self.audit.record(\"checkout\", cart.id)",
+   "expect": {
+    "r2": false
+   }
+  },
+  {
+   "id": "go-compute-only",
+   "language": "go",
+   "name": "Mean",
+   "source": "func Mean(values []float64) float64 {\n\tsum := 0.0\n\tfor _, v := range values {\n\t\tsum += v\n\t}\n\treturn sum / float64(len(values))\n}",
+   "expect": {
+    "r2": false,
+    "r7": false
+   }
+  },
+  {
+   "id": "ts-ifelse-domain",
+   "language": "typescript",
+   "name": "shippingCost",
+   "source": "shippingCost(order: Order): number {\n  if (order.isExpress) {\n    return this.expressCarrier.quote(order) + this.expressSurcharge(order);\n  } else {\n    return this.standardCarrier.quote(order);\n  }\n}",
+   "expect": {
+    "r4": true,
+    "r3": false
+   }
+  },
+  {
+   "id": "ts-ifelse-foreign-type",
+   "language": "typescript",
+   "name": "parseBody",
+   "source": "function parseBody(body: string | Buffer): Payload {\n  if (typeof body === \"string\") {\n    return JSON.parse(body);\n  } else {\n    return JSON.parse(body.toString(\"utf8\"));\n  }\n}",
+   "expect": {
+    "r4": false
+   }
+  },
+  {
+   "id": "php-guard-clause",
+   "language": "php",
+   "name": "activate",
+   "source": "public function activate(User $user): void\n{\n    if ($user === null) {\n        throw new InvalidArgumentException(\"user required\");\n    }\n    $this->repository->markActive($user);\n}",
+   "expect": {
+    "r4": false,
+    "r7": false
+   }
+  },
+  {
+   "id": "java-if-in-middle",
+   "language": "java",
+   "name": "process",
+   "source": "public Receipt process(Order order) {\n    Receipt receipt = new Receipt(order.id());\n    ledger.open(order);\n    if (order.total() > limit) {\n        approvals.request(order);\n    }\n    ledger.close(order);\n    return receipt;\n}",
+   "expect": {
+    "r3": true,
+    "r4": false
+   }
+  },
+  {
+   "id": "java-if-first-and-only",
+   "language": "java",
+   "name": "approveIfLarge",
+   "source": "private void approveIfLarge(Order order) {\n    if (order.total() > limit) {\n        approvals.request(order);\n    }\n}",
+   "expect": {
+    "r3": false,
+    "r4": false,
+    "r7": false
+   }
+  },
+  {
+   "id": "ts-switch-default",
+   "language": "typescript",
+   "name": "label",
+   "source": "function label(status: Status): string {\n  switch (status) {\n    case \"open\":\n      return \"Open\";\n    case \"closed\":\n      return \"Closed\";\n    default:\n      return \"Unknown\";\n  }\n}",
+   "expect": {
+    "r5": true
+   }
+  },
+  {
+   "id": "ts-switch-exhaustive",
+   "language": "typescript",
+   "name": "label",
+   "source": "function label(status: \"open\" | \"closed\" | \"held\"): string {\n  switch (status) {\n    case \"open\":\n      return \"Open\";\n    case \"closed\":\n      return \"Closed\";\n    case \"held\":\n      return \"On hold\";\n  }\n}",
+   "expect": {
+    "r5": false
+   }
+  },
+  {
+   "id": "rust-match-exhaustive",
+   "language": "rust",
+   "name": "fee",
+   "source": "fn fee(tier: Tier) -> u32 {\n    match tier {\n        Tier::Free => 0,\n        Tier::Pro => 900,\n        Tier::Team => 2900,\n    }\n}",
+   "expect": {
+    "r5": false
+   }
+  },
+  {
+   "id": "java-switch-fallthrough",
+   "language": "java",
+   "name": "apply",
+   "source": "void apply(Event e) {\n    switch (e.kind()) {\n        case CREATED:\n            index.add(e);\n        case UPDATED:\n            index.refresh(e);\n            break;\n        case DELETED:\n            index.remove(e);\n            break;\n    }\n}",
+   "expect": {
+    "r5": true
+   }
+  },
+  {
+   "id": "c-assignment-in-condition",
+   "language": "c",
+   "name": "drain",
+   "source": "void drain(FILE *in) {\n    int c;\n    while ((c = fgetc(in)) != EOF) {\n        putchar(c);\n    }\n}",
+   "expect": {
+    "r7": true
+   }
+  },
+  {
+   "id": "js-condition-mutates",
+   "language": "javascript",
+   "name": "next",
+   "source": "function next(queue) {\n  if (queue.pop() !== undefined) {\n    return queue.length;\n  }\n  return 0;\n}",
+   "expect": {
+    "r7": true
+   }
+  },
+  {
+   "id": "py-condition-logs",
+   "language": "python",
+   "name": "allowed",
+   "source": "def allowed(self, user):\n    if self.audit.log_access(user) and user.is_admin:\n        return True\n    return False",
+   "expect": {
+    "r7": true
+   }
+  },
+  {
+   "id": "py-pure-condition",
+   "language": "python",
+   "name": "allowed",
+   "source": "def allowed(self, user):\n    if user.is_admin and not user.is_suspended:\n        return True\n    return False",
+   "expect": {
+    "r7": false
+   }
+  },
+  {
+   "id": "py-test-setup",
+   "language": "python",
+   "name": "setUp",
+   "source": "def setUp(self):\n    self.db = FakeDatabase()\n    self.clock = FrozenClock(\"2026-01-01\")\n    self.mailer = RecordingMailer()\n    self.service = SignupService(self.db, self.clock, self.mailer)\n    self.user = self.service.register(\"ada@example.com\")\n    self.token = self.mailer.last_token()\n    self.service.confirm(self.token)",
+   "expect": {
+    "idiom": true
+   }
+  },
+  {
+   "id": "java-spring-controller",
+   "language": "java",
+   "name": "create",
+   "source": "@PostMapping(\"/orders\")\npublic ResponseEntity<OrderView> create(@Valid @RequestBody CreateOrder body, Principal principal) {\n    Order order = orders.place(body, principal.getName());\n    return ResponseEntity.status(HttpStatus.CREATED).body(OrderView.of(order));\n}",
+   "expect": {
+    "idiom": true,
+    "r2": false
+   }
+  },
+  {
+   "id": "ts-domain-method",
+   "language": "typescript",
+   "name": "applyDiscount",
+   "source": "applyDiscount(code: string): void {\n  const rule = this.rules.find(code);\n  this.total = rule.apply(this.total);\n}",
+   "expect": {
+    "idiom": false,
+    "r9": false
+   }
+  },
+  {
+   "id": "php-promoted-constructor",
+   "language": "php",
+   "name": "__construct",
+   "source": "final class Money\n{\n    public function __construct(\n        public readonly int $amount,\n        public readonly string $currency,\n    ) {}\n}",
+   "expect": {
+    "idiom": true,
+    "r9": false
+   }
+  }
+ ]
+}
